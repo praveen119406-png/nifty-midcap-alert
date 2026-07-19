@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+portfolio.json
+backtest_results.png
+backtest_trades.csv
+backtest_value_history.csv
+nifty_midcap_all_returns.csv
+nifty_midcap_top10_monthly.csv
+monthly_holdings_report.txt
