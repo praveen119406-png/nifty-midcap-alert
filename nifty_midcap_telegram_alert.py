@@ -16,7 +16,7 @@ import yfinance as yf
 
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
-TELEGRAM_CHAT_ID = "763520679"
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 CSV_PATH = r"C:\Users\prave\Downloads\ind_niftymidcap150list.csv"
 
 
