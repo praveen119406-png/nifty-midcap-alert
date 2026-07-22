@@ -17,7 +17,7 @@ import numpy as np
 import yfinance as yf
 
 
-TELEGRAM_TOKEN = "8789106162:AAF2Ly4cqYyabNqhD5oyjdiomkMrIW5Ef7Y"
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = "763520679"
 CSV_PATH = r"C:\Users\prave\Downloads\ind_niftymidcap150list.csv"
 PORTFOLIO_FILE = r"C:\Users\prave\Downloads\OPENCODE\portfolio.json"
