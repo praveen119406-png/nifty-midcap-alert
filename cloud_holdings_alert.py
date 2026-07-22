@@ -50,19 +50,14 @@ def send_telegram(message: str):
 
 
 def load_stock_list() -> list[tuple[str, str]]:
-    if os.path.exists(STOCK_LIST_CSV):
-        with open(STOCK_LIST_CSV, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            stocks = []
-            for row in reader:
-                sym = row.get("Symbol", "").strip()
-                name = row.get("Company Name", "").strip()
-                if sym:
-                    stocks.append((sym, name))
-            return stocks
-
+    # Always fetch latest from NSE
+    nse_url = "https://archives.nseindia.com/content/indices/ind_niftymidcap150list.csv"
     try:
-        req = urllib.request.Request(CSV_URL)
+        req = urllib.request.Request(nse_url, headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "text/csv",
+            "Referer": "https://www.nseindia.com",
+        })
         with urllib.request.urlopen(req, timeout=15) as resp:
             text = resp.read().decode("utf-8")
         reader = csv.DictReader(StringIO(text))
@@ -72,10 +67,25 @@ def load_stock_list() -> list[tuple[str, str]]:
             name = row.get("Company Name", "").strip()
             if sym:
                 stocks.append((sym, name))
-        return stocks
+        if stocks:
+            print(f"Fetched {len(stocks)} stocks from NSE")
+            return stocks
     except Exception as e:
-        print(f"Failed to load stock list: {e}")
-        return []
+        print(f"NSE fetch failed: {e}, using local CSV")
+
+    # Fallback to local CSV
+    if os.path.exists(STOCK_LIST_CSV):
+        with open(STOCK_LIST_CSV, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            stocks = []
+            for row in reader:
+                sym = row.get("Symbol", "").strip()
+                name = row.get("Company Name", "").strip()
+                if sym:
+                    stocks.append((sym, name))
+        return stocks
+
+    return []
 
 
 def download_all_data(symbols: list[tuple[str, str]], years: int = 2) -> dict[str, pd.DataFrame]:
