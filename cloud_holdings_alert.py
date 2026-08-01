@@ -31,10 +31,13 @@ INITIAL_CAPITAL = 100000
 
 
 def send_telegram(message: str):
+    # Fail loudly if credentials missing so Actions shows the problem
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print("Telegram credentials not set, skipping send")
-        print(message)
-        return
+        print("ERROR: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID not set in environment (check repo Secrets).")
+        print("Message that would be sent:\n", message)
+        # Exit non-zero so the workflow job is marked failed and you notice
+        sys.exit(2)
+
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     data = urllib.parse.urlencode({
         "chat_id": TELEGRAM_CHAT_ID,
@@ -42,11 +45,20 @@ def send_telegram(message: str):
         "parse_mode": "HTML",
     }).encode("utf-8")
     req = urllib.request.Request(url, data=data)
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        result = json.loads(resp.read())
-        if not result.get("ok"):
-            print(f"Telegram error: {result}")
-        return result
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode("utf-8")
+            try:
+                result = json.loads(body)
+            except Exception:
+                print("Non-JSON response from Telegram:\n", body)
+                return {"ok": False, "raw": body}
+            if not result.get("ok"):
+                print(f"Telegram API returned error: {result}")
+            return result
+    except Exception as e:
+        print(f"Exception sending Telegram message: {e}")
+        return {"ok": False, "exception": str(e)}
 
 
 def load_stock_list() -> list[tuple[str, str]]:
