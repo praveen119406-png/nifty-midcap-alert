@@ -3,13 +3,7 @@ name: Midcap150 Momentum Alert
 on:
   schedule:
     - cron: '15 13 * * *'  # 18:45 IST daily; script decides if a check is due
-  workflow_dispatch:        # Manual trigger (Actions tab -> Run workflow)
-    inputs:
-      force:
-        description: 'Force check now (send Telegram even if not due)'
-        required: false
-        default: 'false'
-        type: boolean
+  workflow_dispatch:        # Manual trigger (Actions tab -> Run workflow); always sends
 
 permissions:
   contents: write
@@ -34,7 +28,12 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python automate_strategy.py --run ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python automate_strategy.py --force
+          else
+            python automate_strategy.py --run
+          fi
 
       - name: Commit state changes
         run: |
