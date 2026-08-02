@@ -4,6 +4,7 @@ Run locally (keeps running):  python telegram_bot.py
 
 Commands (only answered for the authorized chat_id):
     /start /status /alert /check  -> current portfolio status + decision
+    /top10                        -> top 10 momentum stocks
     /test                          -> simple "pong" alive check
 
 Credentials come from TELEGRAM_TOKEN / TELEGRAM_CHAT_ID env vars, or
@@ -50,6 +51,16 @@ def build_status():
     return am.build_message(state, prices, ranked, rank, latest, triggered, sells, buys)
 
 
+def build_top10():
+    prices = am.get_prices()
+    latest = max(pd.Timestamp(d) for s in prices.values() for d in s.index)
+    ranked, _ = am.get_ranks(prices, latest)
+    lines = [f"TOP 10 NIFTY MIDCAP 150 MOMENTUM", f"As of {latest.date()}", ""]
+    for i, (t, r) in enumerate(ranked[:10], 1):
+        lines.append(f"{i:>2}. {am.short(t):<14} {r:+.1%}")
+    return "\n".join(lines)
+
+
 def main():
     token, chat_id = get_config()
     base = f"https://api.telegram.org/bot{token}"
@@ -79,6 +90,12 @@ def main():
                         reply = build_status()
                     except Exception as exc:
                         reply = f"Status check failed: {exc}"
+                elif text.startswith("/top10"):
+                    print("Received top10 command, building reply...")
+                    try:
+                        reply = build_top10()
+                    except Exception as exc:
+                        reply = f"Top10 check failed: {exc}"
                 elif text.startswith("/test"):
                     reply = "pong - bot is alive"
                 else:
