@@ -9,3 +9,16 @@ backtest_value_history.csv
 nifty_midcap_all_returns.csv
 nifty_midcap_top10_monthly.csv
 monthly_holdings_report.txt
+
+# SSH / API secrets - NEVER commit
+*.key
+*.pem
+*.ppk
+*.p12
+oci_key*
+Midcap150T5M/automation/ssh-key-2026-08-01.key.pub
+
+# Momentum automation runtime files
+Midcap150T5M/automation/alert_config.json
+Midcap150T5M/automation/price_data_cache.pkl
+Midcap150T5M/automation/alert.log

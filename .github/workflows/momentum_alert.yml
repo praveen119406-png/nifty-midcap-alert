@@ -1,0 +1,38 @@
+name: Midcap150 Momentum Alert
+
+on:
+  schedule:
+    - cron: '15 13 * * *'  # 18:45 IST daily; script decides if a check is due
+  workflow_dispatch:        # Manual trigger (Actions tab -> Run workflow)
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r Midcap150T5M/automation/requirements.txt
+
+      - name: Run momentum check
+        working-directory: Midcap150T5M/automation
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python automate_strategy.py --run
+
+      - name: Commit state changes
+        run: |
+          git config user.name "algo-bot"
+          git config user.email "algo-bot@users.noreply.github.com"
+          git add Midcap150T5M/automation/portfolio_state.json
+          git diff --cached --quiet || git commit -m "Update portfolio state [skip ci]" && git push
