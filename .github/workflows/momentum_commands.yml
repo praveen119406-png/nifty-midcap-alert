@@ -1,0 +1,48 @@
+name: Midcap150 Telegram Commands
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # poll for /status etc. every 5 minutes
+  workflow_dispatch:
+
+concurrency:
+  group: telegram-command-poll
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r Midcap150T5M/automation/requirements.txt
+
+      - name: Poll Telegram commands
+        working-directory: Midcap150T5M/automation
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python telegram_command_worker.py
+
+      - name: Commit poll offset
+        run: |
+          git config user.name "algo-bot"
+          git config user.email "algo-bot@users.noreply.github.com"
+          git add Midcap150T5M/automation/telegram_offset.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update telegram poll offset [skip ci]"
+            git push
+          else
+            echo "No offset change."
+          fi
