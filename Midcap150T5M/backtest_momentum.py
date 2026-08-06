@@ -28,7 +28,7 @@ CONST_FILE = "nifty_midcap150_constituents.csv"
 
 DATA_START = "2019-01-01"
 BACKTEST_START = "2021-01-01"
-END = pd.Timestamp.today().strftime("%Y-%m-%d")  # always fetch through today
+END = "2026-08-01"
 
 POSITIONS = 5
 CAPITAL_PER_STOCK = 20000.0
