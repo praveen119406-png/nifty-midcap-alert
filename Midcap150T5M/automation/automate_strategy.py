@@ -123,15 +123,15 @@ def build_message(state, prices, ranked, rank, as_of, triggered, sells, buys):
         val = info["shares"] * px
         cost = info["shares"] * info["avg_price"]
         total_val += val
-        rows.append((t, val, val - cost, rank.get(t, "-")))
+        rows.append((t, info["shares"], val, val - cost, rank.get(t, "-")))
 
     lines.append(f"PORTFOLIO VALUE: {fmt_rs(total_val)}   (idle cash {fmt_rs(cash)})")
     lines.append(f"P&L: {fmt_rs(total_val - state['initial_capital'])} "
                  f"({100 * (total_val / state['initial_capital'] - 1):+.2f}%)")
     lines.append("")
     lines.append("HOLDINGS:")
-    for t, val, pnl, rk in rows:
-        lines.append(f" {short(t):<12} rank {str(rk):>2}  {fmt_rs(val):>10}  P&L {pnl:+,.0f}")
+    for t, sh, val, pnl, rk in rows:
+        lines.append(f" {short(t):<12} {sh:>4} sh  rank {str(rk):>2}  {fmt_rs(val):>10}  P&L {pnl:+,.0f}")
     lines.append("")
 
     if not triggered:
@@ -139,7 +139,7 @@ def build_message(state, prices, ranked, rank, as_of, triggered, sells, buys):
     else:
         lines.append("DECISION: REBALANCE TRIGGERED (rank > 10)")
         for t in sells:
-            lines.append(f"  SELL {short(t):<12} rank {rank[t]}")
+            lines.append(f"  SELL {short(t):<12} {holdings[t]['shares']} sh  rank {rank[t]}")
         for t, sh, px, rk in buys:
             lines.append(f"  BUY  {short(t):<12} rank {rk}  {sh} sh @ {fmt_rs(px)}")
     lines.append("")
