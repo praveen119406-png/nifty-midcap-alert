@@ -149,19 +149,6 @@ def build_message(state, prices, ranked, rank, as_of, triggered, sells, buys):
     return "\n".join(lines)
 
 
-def execute(state, prices, sells, buys, as_of):
-    holdings = state["holdings"]
-    cash = state["cash"]
-    for t in sells:
-        cash += holdings[t]["shares"] * price_at(prices, t, as_of)
-        del holdings[t]
-    for t, sh, px, _ in buys:
-        holdings[t] = {"shares": sh, "avg_price": px}
-        cash -= sh * px
-    state["holdings"] = holdings
-    state["cash"] = cash
-
-
 def run_check(force=False, dry_run=False):
     prices = get_prices()
     latest = max(pd.Timestamp(d) for s in prices.values() for d in s.index)
@@ -188,8 +175,6 @@ def run_check(force=False, dry_run=False):
     # Send first: if Telegram fails, state is left unchanged so the check is
     # retried on the next run.
     send_telegram(msg)
-    if triggered:
-        execute(state, prices, sells, buys, latest)
     state["last_check"] = f"{latest.year}-{latest.month:02d}"
     save_json(STATE_FILE, state)
     print("Telegram message sent, state updated.")
