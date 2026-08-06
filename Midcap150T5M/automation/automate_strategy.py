@@ -149,12 +149,12 @@ def build_message(state, prices, ranked, rank, as_of, triggered, sells, buys):
     return "\n".join(lines)
 
 
-def run_check(force=False, dry_run=False):
+def run_check(force=False, dry_run=False, daily=False):
     prices = get_prices()
     latest = max(pd.Timestamp(d) for s in prices.values() for d in s.index)
     state = load_json(STATE_FILE)
 
-    due = force
+    due = force or daily
     if not due and state.get("last_check"):
         ly, lm = map(int, state["last_check"].split("-"))
         due = (latest.year, latest.month) > (ly, lm)
@@ -205,6 +205,8 @@ if __name__ == "__main__":
     args = set(sys.argv[1:])
     if "--test" in args:
         send_test()
+    elif "--daily" in args:
+        run_check(force="--force" in args, daily=True, dry_run="--dry-run" in args)
     elif "--dry-run" in args:
         run_check(force="--force" in args, dry_run=True)
     else:
