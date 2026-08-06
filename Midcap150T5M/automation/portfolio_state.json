@@ -8,10 +8,6 @@
       "shares": 58,
       "avg_price": 345.35
     },
-    "GVT&D.NS": {
-      "shares": 4,
-      "avg_price": 4498.18
-    },
     "LAURUSLABS.NS": {
       "shares": 13,
       "avg_price": 1540.3
@@ -19,9 +15,13 @@
     "BHARATFORG.NS": {
       "shares": 9,
       "avg_price": 2187.0
+    },
+    "APARINDS.NS": {
+      "shares": 1,
+      "avg_price": 15666.0
     }
   },
-  "cash": 2380.0,
+  "cash": 4354.0,
   "last_check": "2026-08",
   "initial_capital": 100000.0
 }
