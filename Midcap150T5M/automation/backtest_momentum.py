@@ -12,6 +12,7 @@ Nifty Midcap 150 Momentum Strategy Backtest
 - Costs     : ignored (per user request).
 """
 
+import io
 import os
 import pickle
 import sys
@@ -19,6 +20,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+import requests
 import yfinance as yf
 
 warnings.filterwarnings("ignore")
@@ -37,9 +39,66 @@ RANK_THRESHOLD = 10  # rebalance when a held stock ranks worse than this
 
 BENCHMARK = "NIFTYMIDCAP150.NS"  # Nifty Midcap 150 index on Yahoo
 
+NSE_MIDCAP150_URL = "https://nsearchives.nseindia.com/content/indices/ind_niftymidcap150list.csv"
+
+
+def fetch_nse_constituents():
+    """Download the current Nifty Midcap 150 constituent list from NSE.
+
+    Returns a DataFrame (same columns as the CSV: Company Name, Industry,
+    Symbol, Series, ISIN Code) or raises on network/parse failure so the
+    caller can fall back to the local snapshot.
+    """
+    resp = requests.get(
+        NSE_MIDCAP150_URL,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return pd.read_csv(io.StringIO(resp.text))
+
 
 def load_constituents(path):
-    df = pd.read_csv(path)
+    """Load the Nifty Midcap 150 universe.
+
+    Verifies the local CSV against the live NSE constituent list. The live
+    NSE list is authoritative: if it differs (reconstitution/rename) the CSV
+    is refreshed on disk and the new symbols are used. If NSE is unreachable
+    the local snapshot is used unchanged.
+    """
+    try:
+        local = pd.read_csv(path)
+    except FileNotFoundError:
+        local = None
+
+    try:
+        nse = fetch_nse_constituents()
+        if local is not None:
+            local_syms = set(local["Symbol"])
+            nse_syms = set(nse["Symbol"])
+            removed = sorted(local_syms - nse_syms)
+            added = sorted(nse_syms - local_syms)
+            if removed or added:
+                print(
+                    f"NSE list changed: {len(removed)} removed "
+                    f"({', '.join(removed[:5])}...), "
+                    f"{len(added)} added ({', '.join(added[:5])}...). "
+                    "Refreshing constituents CSV."
+                )
+            else:
+                print(f"Verified {len(nse)} constituents against live NSE list (unchanged).")
+        else:
+            print(f"Local {path} not found; using live NSE list.")
+        nse.to_csv(path, index=False)
+        df = nse
+    except Exception as exc:
+        if local is None:
+            raise FileNotFoundError(
+                f"{path} missing and NSE list unreachable: {exc}"
+            ) from exc
+        print(f"NSE list unavailable ({exc}); using local snapshot {path}.")
+        df = local
+
     symbols = [f"{s}.NS" for s in df["Symbol"].tolist()]
     return symbols
 
