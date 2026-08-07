@@ -54,6 +54,29 @@ def get_prices():
     return {t: s for t, s in prices.items() if len(s) > bt.LOOKBACK_DAYS + 250}
 
 
+def month_end_as_of(prices):
+    """Last trading day of the most recent completed calendar month.
+
+    The strategy rebalances on end-of-month closing prices only, so the
+    ranking reference date is always the final trading day of the last
+    completed month (the month before the current one), regardless of when
+    the workflow happens to run. Intra-month prices are never used for
+    ranking.
+    """
+    all_dates = sorted({pd.Timestamp(d) for s in prices.values() for d in s.index})
+    # Most recent completed calendar month = the month before today. Any
+    # data dated inside the current month is intra-month and must be ignored.
+    ref = (pd.Timestamp.today().normalize().replace(day=1) - pd.Timedelta(days=1))
+    completed = [d for d in all_dates if d <= ref]
+    if not completed:
+        completed = all_dates
+    months = {}
+    for d in completed:
+        key = (d.year, d.month)
+        months[key] = d if d > months.get(key, pd.Timestamp.min) else months[key]
+    return months[max(months)]
+
+
 def get_ranks(prices, as_of):
     mom = {}
     for t in prices:
@@ -151,21 +174,21 @@ def build_message(state, prices, ranked, rank, as_of, triggered, sells, buys):
 
 def run_check(force=False, dry_run=False, daily=False):
     prices = get_prices()
-    latest = max(pd.Timestamp(d) for s in prices.values() for d in s.index)
+    as_of = month_end_as_of(prices)
     state = load_json(STATE_FILE)
 
     due = force or daily
     if not due and state.get("last_check"):
         ly, lm = map(int, state["last_check"].split("-"))
-        due = (latest.year, latest.month) > (ly, lm)
+        due = (as_of.year, as_of.month) > (ly, lm)
     if not due:
-        print(f"No monthly check due yet (latest data {latest.date()}, "
+        print(f"No monthly check due yet (month-end data {as_of.date()}, "
               f"last check {state['last_check']}). Nothing to do.")
         return
 
-    ranked, rank = get_ranks(prices, latest)
-    triggered, sells, buys = plan_rebalance(state, prices, ranked, rank, latest)
-    msg = build_message(state, prices, ranked, rank, latest, triggered, sells, buys)
+    ranked, rank = get_ranks(prices, as_of)
+    triggered, sells, buys = plan_rebalance(state, prices, ranked, rank, as_of)
+    msg = build_message(state, prices, ranked, rank, as_of, triggered, sells, buys)
 
     if dry_run:
         print(msg)
@@ -175,7 +198,7 @@ def run_check(force=False, dry_run=False, daily=False):
     # Send first: if Telegram fails, state is left unchanged so the check is
     # retried on the next run.
     send_telegram(msg)
-    state["last_check"] = f"{latest.year}-{latest.month:02d}"
+    state["last_check"] = f"{as_of.year}-{as_of.month:02d}"
     save_json(STATE_FILE, state)
     print("Telegram message sent, state updated.")
 
