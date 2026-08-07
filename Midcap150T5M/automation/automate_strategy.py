@@ -131,6 +131,26 @@ def plan_rebalance(state, prices, ranked, rank, as_of):
     return triggered, sells, buys
 
 
+def apply_rebalance(state, prices, sells, buys, as_of):
+    """Mutate the state to reflect the rebalance plan (advisory paper-tracking).
+
+    Sells are removed at their as_of price (proceeds returned to cash), then
+    buys are added at the computed share/price. Called only when a rebalance
+    was triggered, after the Telegram message has been sent.
+    """
+    holdings = state["holdings"]
+    cash = state["cash"]
+    for t in sells:
+        cash += holdings[t]["shares"] * price_at(prices, t, as_of)
+        del holdings[t]
+    for t, shares, px, _rk in buys:
+        holdings[t] = {"shares": int(shares), "avg_price": float(px)}
+        cash -= shares * px
+    state["holdings"] = holdings
+    state["cash"] = round(float(cash), 2)
+    return state
+
+
 def build_message(state, prices, ranked, rank, as_of, triggered, sells, buys):
     holdings = state["holdings"]
     cash = state["cash"]
@@ -198,6 +218,9 @@ def run_check(force=False, dry_run=False, daily=False):
     # Send first: if Telegram fails, state is left unchanged so the check is
     # retried on the next run.
     send_telegram(msg)
+    if triggered:
+        apply_rebalance(state, prices, sells, buys, as_of)
+        print("Rebalance applied to portfolio state (advisory paper-tracking).")
     state["last_check"] = f"{as_of.year}-{as_of.month:02d}"
     save_json(STATE_FILE, state)
     print("Telegram message sent, state updated.")
